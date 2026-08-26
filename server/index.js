@@ -3,8 +3,9 @@ import express from "express";
 import path from "node:path";
 import {fileURLToPath} from "node:url";
 import {addWallet,listWallets,recentTrades,consensus,recentLaunches} from "./db.js";
-import {startPumpFeed,refreshSubscriptions} from "./pump.js";
-import {startScreener} from "./screener.js";
+import {refreshSubscriptions} from "./pump.js";
+import "./screener.js";
+import {startFeed} from "./feed.js";
 
 const __dirname=path.dirname(fileURLToPath(import.meta.url));
 const app=express();
@@ -27,5 +28,4 @@ app.post("/api/wallets",(req,res)=>{
 
 app.get("/",(req,res)=>res.sendFile(path.join(__dirname,"../public/index.html")));
 app.listen(Number(process.env.PORT||3000),()=>console.log("Smart Money Tracker: http://localhost:"+Number(process.env.PORT||3000)));
-startPumpFeed();
-startScreener();
+startFeed();
