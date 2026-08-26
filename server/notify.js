@@ -3,7 +3,7 @@ import { getWallet, consensus } from "./db.js";
 
 function telegram(text){
  const token=process.env.TELEGRAM_BOT_TOKEN,chat=process.env.TELEGRAM_CHAT_ID;
- if(!token||!chat)return Promise.resolve();
+ if(!token||!chat){console.error("Telegram: TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID missing, skipping alert");return Promise.resolve();}
  const body=new URLSearchParams({chat_id:chat,text}).toString();
  return new Promise(resolve=>{
   const req=https.request({
@@ -11,8 +11,20 @@ function telegram(text){
    path:`/bot${token}/sendMessage`,
    method:"POST",
    headers:{"content-type":"application/x-www-form-urlencoded","content-length":Buffer.byteLength(body)}
-  },res=>{res.resume();res.on("end",resolve)});
-  req.on("error",resolve);req.end(body);
+  },res=>{
+   let data="";
+   res.on("data",chunk=>data+=chunk);
+   res.on("end",()=>{
+    if(res.statusCode>=200&&res.statusCode<300){
+     console.log("Telegram: alert sent ("+res.statusCode+")");
+    }else{
+     console.error("Telegram: send FAILED, status "+res.statusCode+", response: "+data);
+    }
+    resolve();
+   });
+  });
+  req.on("error",err=>{console.error("Telegram: request error:",err.message);resolve();});
+  req.end(body);
  });
 }
 
@@ -31,6 +43,7 @@ Contract: ${l.mint}
 https://pump.fun/coin/${l.mint}
 
 ⚠️ Heuristic momentum signal, not a profit guarantee. DYOR before buying.`;
+ console.log("Telegram: attempting screener alert for "+(l.symbol||l.mint)+" score "+l.score);
  await telegram(text);
 }
 
@@ -53,5 +66,6 @@ Buy: ${amount.toFixed(3)} SOL
 Token: ${e.mint}${consensusLine}
 
 https://pump.fun/coin/${e.mint}`;
+ console.log("Telegram: attempting wallet-buy alert for "+e.traderPublicKey);
  await telegram(text);
 }
